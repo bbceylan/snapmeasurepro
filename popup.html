@@ -4,12 +4,64 @@
   <meta charset="utf-8">
   <link rel="stylesheet" href="popup.css">
   <style>
-    body { margin: 0; font: 14px/1.4 system-ui, sans-serif; padding: 12px; }
-    #toggle { width: 100%; padding: 8px 12px; border: none; border-radius: 6px; background: #00bfae; color: #fff; font-weight: 600; cursor: pointer; }
+    body { margin:0; font:14px/1.4 system-ui,sans-serif; padding:12px; width:280px;}
+    h2   { margin:14px 0 6px; font-size:15px; }
+    .row { display:flex; align-items:center; margin:6px 0; }
+    .row label { flex:1; }
+    .row input[type="checkbox"],
+    .row input[type="range"],
+    .row select,
+    .row button { margin-left:6px; }
+    .disabled { opacity:.35; pointer-events:none; }
+    #toggle-button { width:100%; padding:8px 12px; border:none; border-radius:6px;
+      background:#00bfae; color:#fff; font-weight:600; cursor:pointer; margin:10px 0;}
+    .status-active   { color:#00bfae; }
+    .status-inactive { color:#d32f2f; }
+    .license-message { font-size:12px; margin-top:4px; }
+    .error   { color:#d32f2f; }
+    .success { color:#00bfae; }
   </style>
 </head>
 <body>
-  <button id="toggle">Toggle Inspector</button>
+
+  <!-- Inspector toggle -->
+  <button id="toggle-button">Toggle Inspector</button>
+
+  <!-- Free features -->
+  <h2>Free Features</h2>
+  <div class="row"><label>Show grid</label> <input id="free-grid-toggle" type="checkbox"></div>
+  <div class="row"><label>Free selection</label> <input id="free-selection-toggle" type="checkbox"></div>
+  <div class="row"><label>Multi-distance</label> <input id="multi-distance-toggle" type="checkbox"></div>
+
+  <!-- Pro features -->
+  <h2>Pro Features</h2>
+  <div id="pro-features-container" class="disabled">
+    <div class="row"><label>Advanced grid</label>  <input id="grid-toggle" type="checkbox"></div>
+    <div class="row"><label>Baseline step</label>
+      <select id="baseline-select">
+        <option value="0">Off</option>
+        <option value="4">4 px</option>
+        <option value="8">8 px</option>
+      </select>
+    </div>
+    <div class="row"><label>Guides</label>       <input id="guides-toggle" type="checkbox"></div>
+    <div class="row"><label>Overlay image</label> <button id="screenshot-upload-btn">Pick…</button></div>
+    <input id="screenshot-upload" type="file" accept="image/*" style="display:none">
+    <div class="row"><label>Remove image</label> <button id="screenshot-delete-btn">Delete</button></div>
+    <div class="row"><label>Image opacity</label> <input id="screenshot-opacity" type="range" min="0" max="1" step="0.05"></div>
+    <div class="row"><label>Export PNG</label>   <button id="export-button">Export</button></div>
+  </div>
+
+  <!-- Licence section -->
+  <h2>Licence</h2>
+  <div class="row"><label>Status:</label> <span id="license-status" class="status-inactive">Inactive</span></div>
+  <div class="row"><input id="license-key-input" placeholder="XXXX-XXXX-XXXX" style="flex:1"></div>
+  <div class="row">
+    <button id="activate-license-btn">Activate</button>
+    <button id="deactivate-license-btn" style="display:none;margin-left:6px">Deactivate</button>
+  </div>
+  <div id="license-message" class="license-message"></div>
+
   <script src="popup.js"></script>
 </body>
 </html>
