@@ -9,9 +9,9 @@ const ui = {};
 function createUI() {
     if (overlayRoot) {
         console.log('SnapMeasure: overlayRoot already exists');
-        overlayRoot.style.display = 'block'; // Ensure visible
-        overlayRoot.style.border = '2px dashed #00bfae'; // Debug border
-        return; // Already created
+        overlayRoot.style.display = 'block';
+        overlayRoot.style.zIndex = '2147483647';
+        return;
     }
     console.log('SnapMeasure: createUI called');
     overlayRoot = document.createElement('div');
@@ -24,7 +24,7 @@ function createUI() {
     overlayRoot.style.pointerEvents = 'none';
     overlayRoot.style.zIndex = '2147483647';
     overlayRoot.style.display = 'block';
-    overlayRoot.style.border = '2px dashed #00bfae'; // Debug border
+    overlayRoot.style.border = '2px dashed #00bfae';
 
     // Visual indicator badge
     const badge = document.createElement('div');
@@ -107,12 +107,12 @@ function createUI() {
     } else {
         console.log('SnapMeasure: overlayRoot appended to DOM');
     }
-    injectSnapMeasureStyles(); // Always inject styles
+    injectSnapMeasureStyles();
 }
 
 function destroyUI() {
     if (overlayRoot && overlayRoot.parentNode) {
-        console.log('destroyUI called');
+        console.log('SnapMeasure: destroyUI called');
         overlayRoot.parentNode.removeChild(overlayRoot);
         overlayRoot = null;
     }
@@ -287,6 +287,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // --- Robust storage change handling ---
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') {
+        console.log('SnapMeasure: Storage changed', changes);
         if ('showGrid' in changes) settings.showGrid = changes.showGrid.newValue;
         if ('showBaselineGrid' in changes) settings.showBaselineGrid = changes.showBaselineGrid.newValue;
         if ('showGuides' in changes) settings.showGuides = changes.showGuides.newValue;
@@ -318,13 +319,13 @@ if (typeof window.snapMeasureInitialized === 'undefined') {
                 freeSelectionEnabled = typeof result.freeSelectionEnabled !== 'undefined' ? result.freeSelectionEnabled : true;
                 multiDistanceEnabled = typeof result.multiDistanceEnabled !== 'undefined' ? result.multiDistanceEnabled : true;
                 autoCopyEnabled = typeof result.autoCopyEnabled !== 'undefined' ? result.autoCopyEnabled : false;
+                console.log('SnapMeasure: Settings loaded', settings, {freeSelectionEnabled, multiDistanceEnabled, autoCopyEnabled});
                 drawGrid();
                 drawBaselineGrid();
                 drawScreenshot();
                 if (window.inspector && window.inspector.isActive) {
                     scheduleDrawGuides();
                 }
-                console.log('SnapMeasure: Settings loaded', settings, {freeSelectionEnabled, multiDistanceEnabled, autoCopyEnabled});
             });
         }
 
@@ -369,12 +370,12 @@ if (typeof window.snapMeasureInitialized === 'undefined') {
                     createUI();
                 }
                 overlayRoot.style.display = 'block';
-                overlayRoot.style.border = '2px dashed #00bfae';
+                overlayRoot.style.zIndex = '2147483647';
                 injectSnapMeasureStyles();
                 return;
             }
             isActive = true;
-            console.log('Inspector activated');
+            console.log('SnapMeasure: Inspector activated');
             removeAllEventListeners();
             removeAllOverlayElements();
             destroyUI();
@@ -405,7 +406,7 @@ if (typeof window.snapMeasureInitialized === 'undefined') {
         function deactivate() {
             if (!isActive) return;
             isActive = false;
-            console.log('Inspector deactivated');
+            console.log('SnapMeasure: Inspector deactivated');
             removeAllEventListeners();
             removeAllOverlayElements();
             destroyUI();
