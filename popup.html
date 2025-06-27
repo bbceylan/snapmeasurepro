@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SnapMeasure</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="header">
+        <h3>Free Features</h3>
+        <div class="controls">
+            <button id="toggle-button" class="action-btn">Toggle Inspector</button>
+            <button id="clear-button" class="action-btn">Clear Measurements</button>
+        </div>
+    </div>
+    <div class="settings-container free-features">
+        <div class="setting-item">
+            <span>Show Grid (Free)</span>
+            <label class="switch">
+                <input type="checkbox" id="free-grid-toggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="header">
+        <h3 class="pro-title">Pro Features</h3>
+    </div>
+    <div class="settings-container pro-features" id="pro-features-container">
+        <div class="setting-item">
+            <span>8-pt Grid</span>
+            <label class="switch">
+                <input type="checkbox" id="grid-toggle">
+                <span class="slider pro-slider"></span>
+            </label>
+        </div>
+        <div class="setting-item">
+            <span>Baseline</span>
+            <select id="baseline-select">
+                <option value="0">Off</option>
+                <option value="4">4px</option>
+                <option value="5">5px</option>
+                <option value="6">6px</option>
+            </select>
+        </div>
+        <div class="setting-item">
+            <span>Guides</span>
+            <label class="switch">
+                <input type="checkbox" id="guides-toggle">
+                <span class="slider pro-slider"></span>
+            </label>
+        </div>
+        <div class="setting-item screenshot-item">
+            <span>Screenshot Overlay</span>
+            <div class="screenshot-controls">
+                <input type="file" id="screenshot-upload" accept="image/*" style="display: none;">
+                <button id="screenshot-upload-btn" class="action-btn">Upload</button>
+                <button id="screenshot-delete-btn" class="action-btn delete-btn">Delete</button>
+            </div>
+            <input type="range" id="screenshot-opacity" min="0" max="1" step="0.05" value="0.5">
+        </div>
+        <div class="setting-item">
+            <span>Spec Export</span>
+            <button id="export-button" class="action-btn">Export Specs</button>
+        </div>
+    </div>
+    
+    <div class="header">
+        <h3 class="pro-title">License Management</h3>
+    </div>
+    <div class="settings-container license-container">
+        <div id="license-status-display">Status: <span id="license-status" class="status-inactive">Inactive</span></div>
+        <div class="license-input-wrapper">
+            <input type="text" id="license-key-input" placeholder="Enter your license key">
+            <button id="activate-license-btn" class="action-btn">Activate</button>
+        </div>
+        <div id="license-message" class="license-message"></div>
+        <button id="deactivate-license-btn" class="action-btn delete-btn" style="display: none;">Deactivate License</button>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
