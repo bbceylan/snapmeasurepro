@@ -98,35 +98,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Safe Messaging Helper ---
-    function safeSend(msg, toContentScript = false) {
-        return new Promise(resolve => {
-            if (toContentScript) {
-                chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-                    if (!tabs || !tabs.length) {
-                        resolve({ ok: false, error: 'No active tab found.' });
-                        return;
-                    }
-                    chrome.tabs.sendMessage(tabs[0].id, msg, response => {
-                        if (chrome.runtime.lastError) {
-                            console.warn('SnapMeasure message failed:', chrome.runtime.lastError.message);
-                            resolve({ ok: false, error: chrome.runtime.lastError.message });
-                        } else {
-                            resolve({ ok: true, data: response });
-                        }
-                    });
-                });
-            } else {
-                chrome.runtime.getBackgroundPage(() => {
-                    chrome.runtime.sendMessage(msg, response => {
-                        if (chrome.runtime.lastError) {
-                            console.warn('SnapMeasure message failed:', chrome.runtime.lastError.message);
-                            resolve({ ok: false, error: chrome.runtime.lastError.message });
-                        } else {
-                            resolve({ ok: true, data: response });
-                        }
-                    });
-                });
+    function safeSendToTab(msg, cb = () => {}) {
+        chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+            if (!tabs.length) {
+                console.warn('SnapMeasure: no active tab found');
+                return cb({ ok: false, error: 'No active tab' });
             }
+            chrome.tabs.sendMessage(tabs[0].id, msg, response => {
+                if (chrome.runtime.lastError) {
+                    console.warn('SnapMeasure:', chrome.runtime.lastError.message);
+                    return cb({ ok: false, error: chrome.runtime.lastError.message });
+                }
+                cb({ ok: true, data: response });
+            });
         });
     }
 
@@ -142,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         activateBtn.textContent = 'Activating...';
         activateBtn.disabled = true;
-        const res = await safeSend({ action: 'validateLicense', licenseKey: key });
+        const res = await safeSendToTab({ action: 'validateLicense', licenseKey: key });
         if (!res.ok) {
             licenseMessage.textContent = res.error || 'Activation failed. Please check your key.';
             licenseMessage.className = 'license-message error';
@@ -161,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Deactivate License Button
     deactivateBtn.addEventListener('click', async () => {
         if (confirm('Are you sure you want to deactivate your license on this device?')) {
-            const res = await safeSend({ action: 'deactivateLicense' });
+            const res = await safeSendToTab({ action: 'deactivateLicense' });
             if (!res.ok) {
                 alert('SnapMeasure: ' + (res.error || 'Could not deactivate license.'));
             } else {
@@ -176,14 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Toggle Inspector Button
-    toggleBtn.addEventListener('click', async () => {
-        const res = await safeSend({ action: 'toggleInspector' }, true);
-        if (!res.ok) {
-            alert('SnapMeasure: ' + (res.error || 'Could not toggle inspector. Please refresh the page and try again.'));
-            updateToggleButton(false);
-        } else {
-            updateToggleButton(res.data && res.data.isActive);
-        }
+    toggleBtn.addEventListener('click', () => {
+        safeSendToTab({ action: 'toggleInspector' }, res => {
+            if (res.ok) {
+                document.getElementById('toggle-button').textContent =
+                    res.data && res.data.isActive ? 'Disable Inspector' : 'Enable Inspector';
+            }
+        });
     });
 
     // Free Grid Toggle

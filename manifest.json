@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "SnapMeasure",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "A browser extension for measuring and inspecting UI elements.",
   "permissions": [
-    "storage",
     "activeTab",
+    "tabs",
+    "storage",
+    "scripting",
     "offscreen",
-    "clipboardWrite",
-    "scripting"
+    "clipboardWrite"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -18,7 +19,11 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icons/icon48.png"
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "content_scripts": [
     {
@@ -27,6 +32,9 @@
       ],
       "js": [
         "content.js"
+      ],
+      "css": [
+        "content.css"
       ]
     }
   ],
