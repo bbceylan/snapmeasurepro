@@ -1,68 +1,121 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=320,initial-scale=1">
+  <title>SnapMeasure</title>
   <link rel="stylesheet" href="popup.css">
   <style>
-    body { margin:0; font:14px/1.4 system-ui,sans-serif; padding:12px; width:280px;}
-    h2   { margin:14px 0 6px; font-size:15px; }
-    .row { display:flex; align-items:center; margin:6px 0; }
-    .row label { flex:1; }
-    .row input[type="checkbox"],
-    .row input[type="range"],
-    .row select,
-    .row button { margin-left:6px; }
-    .disabled { opacity:.35; pointer-events:none; }
-    #toggle-button { width:100%; padding:8px 12px; border:none; border-radius:6px;
-      background:#00bfae; color:#fff; font-weight:600; cursor:pointer; margin:10px 0;}
-    .status-active   { color:#00bfae; }
-    .status-inactive { color:#d32f2f; }
-    .license-message { font-size:12px; margin-top:4px; }
-    .error   { color:#d32f2f; }
-    .success { color:#00bfae; }
+    :root {
+      --accent: #00bfae;
+      --danger: #F44336;
+      --bg-dark: #1C1C1E;
+      --bg-light: #f9f9f9;
+      --text-dark: #222;
+      --text-light: #fff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-light: #1C1C1E;
+        --text-dark: #fff;
+      }
+    }
+    body {
+      background: var(--bg-light);
+      color: var(--text-dark);
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-width: 320px;
+      max-width: 360px;
+    }
+    .toggle {
+      position: relative;
+      width: 38px;
+      height: 22px;
+      display: inline-block;
+      margin-left: 8px;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background: #ccc; border-radius: 22px; transition: .3s;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px;
+      background: #fff; border-radius: 50%; transition: .3s;
+    }
+    input:checked + .slider { background: var(--accent); }
+    input:checked + .slider:before { transform: translateX(16px); }
+    .icon { width: 16px; height: 16px; vertical-align: middle; margin-right: 6px; }
+    .section { margin: 18px 0 0 0; }
+    .row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+    .label { flex: 1; font-size: 14px; }
+    .details { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px #0001; padding: 12px; margin-bottom: 10px; }
+    .pro-locked { opacity: 0.5; pointer-events: none; }
+    .license-active { color: var(--accent); font-weight: 600; }
+    .license-inactive { color: var(--danger); }
+    .collapse { transition: max-height 0.2s; overflow: hidden; }
   </style>
 </head>
 <body>
-
-  <!-- Inspector toggle -->
-  <button id="toggle-button">Toggle Inspector</button>
-
-  <!-- Free features -->
-  <h2>Free Features</h2>
-  <div class="row"><label>Show grid</label> <input id="free-grid-toggle" type="checkbox"></div>
-  <div class="row"><label>Free selection</label> <input id="free-selection-toggle" type="checkbox"></div>
-  <div class="row"><label>Multi-distance</label> <input id="multi-distance-toggle" type="checkbox"></div>
-  <div class="row"><label>Auto copy</label> <input id="auto-copy-toggle" type="checkbox"></div>
-
-  <!-- Pro features -->
-  <h2>Pro Features</h2>
-  <div id="pro-features-container" class="disabled">
-    <div class="row"><label>Advanced grid</label>  <input id="grid-toggle" type="checkbox"></div>
-    <div class="row"><label>Baseline step</label>
-      <select id="baseline-select">
-        <option value="0">Off</option>
-        <option value="4">4 px</option>
-        <option value="8">8 px</option>
-      </select>
+  <main class="settings-container">
+    <div class="header">
+      <button id="toggle-button" class="action-btn">Toggle Inspector</button>
     </div>
-    <div class="row"><label>Guides</label>       <input id="guides-toggle" type="checkbox"></div>
-    <div class="row"><label>Overlay image</label> <button id="screenshot-upload-btn">Pick…</button></div>
-    <input id="screenshot-upload" type="file" accept="image/*" style="display:none">
-    <div class="row"><label>Remove image</label> <button id="screenshot-delete-btn">Delete</button></div>
-    <div class="row"><label>Image opacity</label> <input id="screenshot-opacity" type="range" min="0" max="1" step="0.05"></div>
-    <div class="row"><label>Export PNG</label>   <button id="export-button">Export</button></div>
-  </div>
-
-  <!-- Licence section -->
-  <h2>Licence</h2>
-  <div class="row"><label>Status:</label> <span id="license-status" class="status-inactive">Inactive</span></div>
-  <div class="row"><input id="license-key-input" placeholder="XXXX-XXXX-XXXX" style="flex:1"></div>
-  <div class="row">
-    <button id="activate-license-btn">Activate</button>
-    <button id="deactivate-license-btn" style="display:none;margin-left:6px">Deactivate</button>
-  </div>
-  <div id="license-message" class="license-message"></div>
-
+    <div class="settings-container free-features">
+      <h3>Free Features</h3>
+      <div class="setting-item">
+        <span><svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Grid</span>
+        <label class="switch"><input id="free-grid-toggle"><span class="slider"></span></label>
+      </div>
+      <div class="setting-item">
+        <span><svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="8" rx="2"/></svg>Free Select</span>
+        <label class="switch"><input id="free-selection-toggle"><span class="slider"></span></label>
+      </div>
+      <div class="setting-item">
+        <span><svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12h16"/></svg>Multi-Guide</span>
+        <label class="switch"><input id="multi-distance-toggle"><span class="slider"></span></label>
+      </div>
+      <div class="setting-item">
+        <span><svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Auto-Copy</span>
+        <label class="switch"><input id="auto-copy-toggle"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="settings-container pro-features" id="pro-features-container">
+      <h3 class="pro-title">Pro Features</h3>
+      <div class="setting-item">
+        <span><svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Advanced Grid</span>
+        <label class="switch"><input id="grid-toggle"><span class="slider pro-slider"></span></label>
+      </div>
+      <div class="setting-item">
+        <span><svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="8" rx="2"/></svg>Baseline</span>
+        <select id="baseline-select"><option value="0">Off</option><option value="4">4 px</option><option value="8">8 px</option></select>
+      </div>
+      <div class="setting-item">
+        <span><svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12h16"/></svg>Guides</span>
+        <label class="switch"><input id="guides-toggle"><span class="slider pro-slider"></span></label>
+      </div>
+      <div class="setting-item screenshot-item">
+        <span><svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Overlay Image</span>
+        <button id="screenshot-upload-btn" class="action-btn">Pick…</button>
+        <input id="screenshot-upload" type="file" accept="image/*" style="display:none">
+        <button id="screenshot-delete-btn" class="action-btn delete-btn">Delete</button>
+        <input id="screenshot-opacity" type="range" min="0" max="1" step="0.05">
+        <button id="export-button" class="action-btn">Export</button>
+      </div>
+    </div>
+    <div class="license-container">
+      <h3>License</h3>
+      <div id="license-status-display" class="status-inactive">Inactive</div>
+      <div class="license-input-wrapper">
+        <input id="license-key-input" placeholder="XXXX-XXXX-XXXX">
+        <button id="activate-license-btn" class="action-btn">Activate</button>
+        <button id="deactivate-license-btn" class="action-btn" style="display:none">Deactivate</button>
+      </div>
+      <div id="license-message" class="license-message"></div>
+    </div>
+  </main>
   <script src="popup.js"></script>
 </body>
 </html>

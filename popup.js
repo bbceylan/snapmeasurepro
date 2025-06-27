@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         freeGridToggle: $('free-grid-toggle'),
         freeSelectionToggle: $('free-selection-toggle'),
         multiDistanceToggle: $('multi-distance-toggle'),
-        licenseStatus: $('license-status'),
+        licenseStatus: $('license-status-display'),
         licenseKeyInput: $('license-key-input'),
         activateBtn: $('activate-license-btn'),
         deactivateBtn: $('deactivate-license-btn'),
@@ -36,12 +36,30 @@ document.addEventListener('DOMContentLoaded', () => {
         els.screenshotOpacity, els.exportButton
     ];
 
+    // Add inspector status indicator
+    let inspectorStatusMsg = document.getElementById('inspector-status-msg');
+    if (!inspectorStatusMsg) {
+        inspectorStatusMsg = document.createElement('div');
+        inspectorStatusMsg.id = 'inspector-status-msg';
+        inspectorStatusMsg.style.background = '#ffe0e0';
+        inspectorStatusMsg.style.color = '#c70000';
+        inspectorStatusMsg.style.fontWeight = 'bold';
+        inspectorStatusMsg.style.fontSize = '13px';
+        inspectorStatusMsg.style.padding = '8px 12px';
+        inspectorStatusMsg.style.borderRadius = '8px';
+        inspectorStatusMsg.style.margin = '10px 0 0 0';
+        inspectorStatusMsg.style.textAlign = 'center';
+        inspectorStatusMsg.style.display = 'none';
+        document.querySelector('.settings-container').prepend(inspectorStatusMsg);
+    }
+
     // ---------- safe messaging ----------
     function sendToActive(msg, cb = () => {}) {
         chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
             if (!tabs.length) return cb({ ok: false, error: 'No active tab' });
-            chrome.tabs.sendMessage(tabs[0].id, msg, res => {
+            chrome.tabs.sendMessage(tabs[0].id, msg, (res) => {
                 if (chrome.runtime.lastError) {
+                    alert('SnapMeasure can only run on regular web pages.');
                     return cb({ ok: false, error: chrome.runtime.lastError.message });
                 }
                 cb({ ok: true, data: res });
@@ -54,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.local.get([
             'isProUser', 'licenseKey', 'showGrid',
             'freeSelectionEnabled', 'multiDistanceEnabled',
-            'autoCopyEnabled'
+            'autoCopyEnabled', 'showGuides', 'showBaselineGrid', 'screenshotOpacity'
         ], st => {
             const isPro = !!st.isProUser;
             proFeaturesContainer.classList.toggle('disabled', !isPro);
@@ -75,12 +93,19 @@ document.addEventListener('DOMContentLoaded', () => {
             els.freeSelectionToggle.checked = !!st.freeSelectionEnabled;
             els.multiDistanceToggle.checked = !!st.multiDistanceEnabled;
             els.autoCopyToggle.checked = !!st.autoCopyEnabled;
+            // pro toggles
+            els.gridToggle.checked = !!st.showGrid;
+            els.guidesToggle.checked = !!st.showGuides;
+            els.baselineSelect.value = st.showBaselineGrid ? String(st.showBaselineGrid) : '0';
+            els.screenshotOpacity.value = st.screenshotOpacity || 0.5;
         });
     }
 
     function setToggleLabel(active) {
         els.toggleBtn.textContent = active ? 'Inspector On' : 'Toggle Inspector';
         els.toggleBtn.classList.toggle('active', active);
+        inspectorStatusMsg.style.display = active ? 'none' : 'block';
+        inspectorStatusMsg.textContent = active ? '' : 'Inspector is OFF. Turn it on to use features.';
     }
 
     // ---------- wire listeners (only if element exists) ----------
@@ -105,13 +130,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     els.deactivateBtn?.addEventListener('click', () => {
         if (!confirm('Deactivate licence on this device?')) return;
-        sendToActive({ action: 'deactivateLicense' }, () => refreshUI());
+        chrome.runtime.sendMessage({ action: 'deactivateLicense' }, () => refreshUI());
     });
 
     // inspector toggle
     els.toggleBtn?.addEventListener('click', () => {
         sendToActive({ action: 'toggleInspector' }, res => {
-            if (res.ok) setToggleLabel(res.data?.isActive);
+            if (!res.ok) {
+                console.warn('SnapMeasure: Content script not present or error:', res.error);
+                return;
+            }
+            setToggleLabel(res.data?.isActive);
         });
     });
 
@@ -122,12 +151,14 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.local.set({ freeSelectionEnabled: els.freeSelectionToggle.checked }));
     els.multiDistanceToggle?.addEventListener('change', () =>
         chrome.storage.local.set({ multiDistanceEnabled: els.multiDistanceToggle.checked }));
+    els.autoCopyToggle?.addEventListener('change', () =>
+        chrome.storage.local.set({ autoCopyEnabled: els.autoCopyToggle.checked }));
 
-    // ----- pro only (guard with && to avoid null) -----
+    // pro toggles → storage
     els.gridToggle?.addEventListener('change', () =>
         chrome.storage.local.set({ showGrid: els.gridToggle.checked }));
     els.baselineSelect?.addEventListener('change', () =>
-        chrome.storage.local.set({ baselineStep: parseInt(els.baselineSelect.value, 10) }));
+        chrome.storage.local.set({ showBaselineGrid: Number(els.baselineSelect.value) }));
     els.guidesToggle?.addEventListener('change', () =>
         chrome.storage.local.set({ showGuides: els.guidesToggle.checked }));
     els.screenshotUploadBtn?.addEventListener('click', () =>
@@ -146,11 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
             parseFloat(els.screenshotOpacity.value) }));
 
     els.exportButton?.addEventListener('click', () =>
-        sendToActive({ action: 'exportImage' }));
-
-    // auto-copy toggle
-    els.autoCopyToggle?.addEventListener('change', () =>
-        chrome.storage.local.set({ autoCopyEnabled: els.autoCopyToggle.checked }));
+        chrome.runtime.sendMessage({ action: 'exportImage' }));
 
     // ---------- init ----------
     refreshUI();
@@ -160,8 +187,14 @@ document.addEventListener('DOMContentLoaded', () => {
     sendToActive({ action: 'getInspectorState' }, res =>
         setToggleLabel(res.data?.isActive));
 
-    // On load, set auto-copy toggle from storage
-    chrome.storage.local.get(['autoCopyEnabled'], st => {
-        if (els.autoCopyToggle) els.autoCopyToggle.checked = !!st.autoCopyEnabled;
+    // Suppress 'Could not establish connection. Receiving end does not exist.' errors in the popup
+    window.addEventListener('unhandledrejection', event => {
+        if (
+            event.reason &&
+            event.reason.message &&
+            event.reason.message.includes('Could not establish connection')
+        ) {
+            event.preventDefault();
+        }
     });
 });
