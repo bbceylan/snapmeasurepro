@@ -1,5 +1,7 @@
 // background.js
 
+/* global chrome */
+
 class SnapMeasureLicenseManager {
     constructor() {
         this.validationEndpoint = 'https://snapmeasure-api.netlify.app/.netlify/functions/validate-license';
@@ -52,6 +54,20 @@ class SnapMeasureLicenseManager {
 
 const licenseManager = new SnapMeasureLicenseManager();
 
+// ---------- Off-screen clipboard helper ----------
+async function ensureOffscreen() {
+  // Creates off-screen document once per session
+  const hasDoc = await chrome.offscreen.hasDocument();
+  if (hasDoc) return;
+
+  await chrome.offscreen.createDocument({
+    url: 'offscreen.html',
+    reasons: ['CLIPBOARD'],
+    justification: 'Write measurement text to clipboard'
+  });
+}
+
+// ---------- Message broker ----------
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Background received message:', request);
     if (request.action === 'validateLicense') {
@@ -67,12 +83,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             });
         return true;
     } else if (request.action === 'copyToClipboard') {
-        // Use the clipboardWrite permission if needed
-        navigator.clipboard.writeText(request.text).then(() => {
-            sendResponse({ success: true });
-        }).catch(() => {
-            sendResponse({ success: false });
+        // Forward to off-screen doc
+        ensureOffscreen().then(() => {
+            chrome.runtime.sendMessage(
+                { action: 'copyToClipboardOffscreen', text: request.text },
+                res => sendResponse(res)
+            );
         });
-        return true; // Indicates async response
+        return true; // keep the sendResponse channel open
     }
 });
