@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportButton = document.getElementById('export-button');
     const toggleBtn = document.getElementById('toggle-button');
     const freeGridToggle = document.getElementById('free-grid-toggle');
+    const freeSelectionToggle = document.getElementById('free-selection-toggle');
+    const multiDistanceToggle = document.getElementById('multi-distance-toggle');
 
     // License Management Controls
     const licenseStatus = document.getElementById('license-status');
@@ -28,37 +30,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Updates the entire UI based on license status from storage
     function updateUIBasedOnLicense() {
-        chrome.storage.local.get(['isProUser', 'licenseKey', 'licenseStatus', 'showGrid'], (result) => {
+        chrome.storage.local.get(['isProUser', 'licenseKey', 'licenseStatus', 'showGrid', 'freeSelectionEnabled', 'multiDistanceEnabled'], (result) => {
             if (result.isProUser) {
                 // User is PRO
                 proFeaturesContainer.classList.remove('disabled');
                 proControls.forEach(control => control.disabled = false);
-
-                licenseStatus.textContent = 'Active';
-                licenseStatus.className = 'status-active';
-                licenseKeyInput.value = result.licenseKey || '';
-                licenseKeyInput.disabled = true;
-                activateBtn.style.display = 'none';
-                deactivateBtn.style.display = 'block';
-                licenseMessage.textContent = 'Pro features unlocked!';
-                licenseMessage.className = 'license-message success';
-
-                freeGridToggle.checked = !!result.showGrid;
             } else {
                 // User is FREE
                 proFeaturesContainer.classList.add('disabled');
                 proControls.forEach(control => control.disabled = true);
+            }
+            // Free features are always enabled
+            freeGridToggle.disabled = false;
+            freeSelectionToggle.disabled = false;
+            multiDistanceToggle.disabled = false;
 
-                licenseStatus.textContent = 'Inactive';
-                licenseStatus.className = 'status-inactive';
-                licenseKeyInput.value = '';
-                licenseKeyInput.disabled = false;
-                activateBtn.style.display = 'block';
-                deactivateBtn.style.display = 'none';
-                licenseMessage.textContent = 'Enter a key to unlock Pro features.';
-                licenseMessage.className = 'license-message';
+            licenseStatus.textContent = result.isProUser ? 'Active' : 'Inactive';
+            licenseStatus.className = result.isProUser ? 'status-active' : 'status-inactive';
+            licenseKeyInput.value = result.isProUser ? (result.licenseKey || '') : '';
+            licenseKeyInput.disabled = !!result.isProUser;
+            activateBtn.style.display = result.isProUser ? 'none' : 'block';
+            deactivateBtn.style.display = result.isProUser ? 'block' : 'none';
+            licenseMessage.textContent = result.isProUser ? 'Pro features unlocked!' : 'Enter a key to unlock Pro features.';
+            licenseMessage.className = result.isProUser ? 'license-message success' : 'license-message';
 
-                freeGridToggle.checked = false;
+            freeGridToggle.checked = !!result.showGrid;
+            freeSelectionToggle.checked = !!result.freeSelectionEnabled;
+            multiDistanceToggle.checked = !!result.multiDistanceEnabled;
+        });
+    }
+
+    // Toggle Inspector Button
+    function updateToggleButton(isActive) {
+        if (isActive) {
+            toggleBtn.classList.add('active');
+            toggleBtn.textContent = 'Inspector On';
+        } else {
+            toggleBtn.classList.remove('active');
+            toggleBtn.textContent = 'Toggle Inspector';
+        }
+    }
+
+    // Query inspector state on load
+    function queryInspectorState() {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'getInspectorState' }, (response) => {
+                updateToggleButton(response && response.isActive);
+            });
+        });
+    }
+
+    // Ensure all feature settings are initialized in storage
+    function initializeSettings() {
+        chrome.storage.local.get(['showGrid', 'showGuides', 'showBaselineGrid', 'screenshotData', 'screenshotOpacity', 'freeSelectionEnabled', 'multiDistanceEnabled'], (result) => {
+            const updates = {};
+            if (typeof result.showGrid === 'undefined') updates.showGrid = true;
+            if (typeof result.showGuides === 'undefined') updates.showGuides = false;
+            if (typeof result.showBaselineGrid === 'undefined') updates.showBaselineGrid = false;
+            if (typeof result.screenshotData === 'undefined') updates.screenshotData = null;
+            if (typeof result.screenshotOpacity === 'undefined') updates.screenshotOpacity = 0.5;
+            if (typeof result.freeSelectionEnabled === 'undefined') updates.freeSelectionEnabled = true;
+            if (typeof result.multiDistanceEnabled === 'undefined') updates.multiDistanceEnabled = true;
+            if (Object.keys(updates).length > 0) {
+                chrome.storage.local.set(updates);
             }
         });
     }
@@ -113,7 +147,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Toggle Inspector Button
     toggleBtn.addEventListener('click', () => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleInspector' });
+            if (!tabs || !tabs.length) {
+                alert('SnapMeasure: No active tab found.');
+                updateToggleButton(false);
+                return;
+            }
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleInspector' }, (response) => {
+                if (chrome.runtime.lastError || !response) {
+                    alert('SnapMeasure can only be used on regular web pages. Try reloading the page or switching tabs.');
+                    updateToggleButton(false);
+                } else {
+                    updateToggleButton(response && response.isActive);
+                }
+            });
         });
     });
 
@@ -124,6 +170,69 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Pro Grid Toggle
+    gridToggle.addEventListener('change', () => {
+        chrome.storage.local.set({ showGrid: gridToggle.checked }, () => {
+            console.log('Pro grid setting updated:', gridToggle.checked);
+        });
+    });
+
+    // Baseline Select
+    baselineSelect.addEventListener('change', () => {
+        const val = parseInt(baselineSelect.value, 10);
+        chrome.storage.local.set({ showBaselineGrid: !!val }, () => {
+            console.log('Baseline grid setting updated:', !!val);
+        });
+    });
+
+    // Guides Toggle
+    guidesToggle.addEventListener('change', () => {
+        chrome.storage.local.set({ showGuides: guidesToggle.checked }, () => {
+            console.log('Guides setting updated:', guidesToggle.checked);
+        });
+    });
+
+    // Screenshot Upload
+    screenshotUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            chrome.storage.local.set({ screenshotData: evt.target.result }, () => {
+                console.log('Screenshot uploaded');
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Screenshot Delete
+    screenshotDeleteBtn.addEventListener('click', () => {
+        chrome.storage.local.set({ screenshotData: null }, () => {
+            console.log('Screenshot deleted');
+        });
+    });
+
+    // Screenshot Opacity
+    screenshotOpacity.addEventListener('input', () => {
+        chrome.storage.local.set({ screenshotOpacity: parseFloat(screenshotOpacity.value) }, () => {
+            console.log('Screenshot opacity updated:', screenshotOpacity.value);
+        });
+    });
+
+    // Free Selection Toggle
+    freeSelectionToggle.addEventListener('change', () => {
+        chrome.storage.local.set({ freeSelectionEnabled: freeSelectionToggle.checked }, () => {
+            console.log('Free selection setting updated:', freeSelectionToggle.checked);
+        });
+    });
+
+    // Multi-Component Distance Toggle
+    multiDistanceToggle.addEventListener('change', () => {
+        chrome.storage.local.set({ multiDistanceEnabled: multiDistanceToggle.checked }, () => {
+            console.log('Multi-component distance setting updated:', multiDistanceToggle.checked);
+        });
+    });
+
     // --- Initialization ---
 
     // Initial UI setup based on license
@@ -131,10 +240,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Listen for changes from background script (e.g., after validation)
     chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === 'local' && (changes.isProUser || changes.licenseStatus || changes.showGrid)) {
+        if (area === 'local' && (changes.isProUser || changes.licenseStatus || changes.showGrid || changes.freeSelectionEnabled || changes.multiDistanceEnabled)) {
             updateUIBasedOnLicense();
         }
     });
+
+    // On popup load, initialize settings and query inspector state
+    initializeSettings();
+    queryInspectorState();
 
     // NOTE: All other event listeners for toggles, buttons, etc.,
     // would go here. They would message the content script as before,

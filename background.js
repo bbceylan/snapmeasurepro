@@ -66,5 +66,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 sendResponse({ success: true });
             });
         return true;
+    } else if (request.action === 'copyToClipboard') {
+        // Use the clipboardWrite permission if needed
+        navigator.clipboard.writeText(request.text).then(() => {
+            sendResponse({ success: true });
+        }).catch(() => {
+            sendResponse({ success: false });
+        });
+        return true; // Indicates async response
     }
 });
