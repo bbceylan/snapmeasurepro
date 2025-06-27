@@ -284,8 +284,25 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
 });
 
+// --- Robust storage change handling ---
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local') {
+        if ('showGrid' in changes) settings.showGrid = changes.showGrid.newValue;
+        if ('showBaselineGrid' in changes) settings.showBaselineGrid = changes.showBaselineGrid.newValue;
+        if ('showGuides' in changes) settings.showGuides = changes.showGuides.newValue;
+        if ('freeSelectionEnabled' in changes) freeSelectionEnabled = changes.freeSelectionEnabled.newValue;
+        if ('multiDistanceEnabled' in changes) multiDistanceEnabled = changes.multiDistanceEnabled.newValue;
+        if ('autoCopyEnabled' in changes) autoCopyEnabled = changes.autoCopyEnabled.newValue;
+        drawGrid();
+        drawBaselineGrid();
+        drawScreenshot();
+        if (window.inspector && window.inspector.isActive) scheduleDrawGuides();
+    }
+});
+
 if (typeof window.snapMeasureInitialized === 'undefined') {
     window.snapMeasureInitialized = true;
+    console.log('SnapMeasure: Initializing inspector logic');
 
     const inspector = (function() {
         let isActive = false;
@@ -305,7 +322,7 @@ if (typeof window.snapMeasureInitialized === 'undefined') {
                 drawBaselineGrid();
                 drawScreenshot();
                 if (window.inspector && window.inspector.isActive) {
-                    drawGuides();
+                    scheduleDrawGuides();
                 }
                 console.log('SnapMeasure: Settings loaded', settings, {freeSelectionEnabled, multiDistanceEnabled, autoCopyEnabled});
             });
@@ -337,12 +354,10 @@ if (typeof window.snapMeasureInitialized === 'undefined') {
                 overlayRoot.removeEventListener('mouseup', onOverlayMouseUp);
                 overlayRoot.removeEventListener('dblclick', onOverlayGuideDblClick);
             }
-            document.removeEventListener('keydown', globalKeydownHandler);
             document.removeEventListener('mousemove', globalMousemoveHandler);
         }
 
         // Wrap global keydown/mousemove for easy removal
-        function globalKeydownHandler(e) { if (isActive) handleKeydown(e); }
         function globalMousemoveHandler(e) { window.lastMouseX = e.clientX; window.lastMouseY = e.clientY; }
 
         function activate() {
@@ -380,11 +395,11 @@ if (typeof window.snapMeasureInitialized === 'undefined') {
                 overlayRoot.addEventListener('mouseup', onOverlayMouseUp);
                 overlayRoot.addEventListener('dblclick', onOverlayGuideDblClick);
             }
-            document.addEventListener('keydown', globalKeydownHandler);
             document.addEventListener('mousemove', globalMousemoveHandler);
             updateBadgeTooltip();
             addCopyButtonToBadge();
             addExportButtonToBadge();
+            if (isActive) scheduleDrawGuides();
         }
 
         function deactivate() {
@@ -426,7 +441,7 @@ if (typeof window.snapMeasureInitialized === 'undefined') {
                 drawGrid();
                 drawBaselineGrid();
                 drawScreenshot();
-                if (isActive) drawGuides();
+                if (isActive) scheduleDrawGuides();
             }
         }
 
@@ -453,6 +468,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
     } else if (request.action === 'getInspectorState') {
         sendResponse({ isActive: window.inspector && window.inspector.isActive });
+    } else if (request.action === 'fallbackCopyToClipboard') {
+        // Try Clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(request.text).then(() => {
+                sendResponse({ ok: true });
+            }).catch(err => {
+                // Fallback to execCommand
+                const textarea = document.createElement('textarea');
+                textarea.value = request.text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    sendResponse({ ok: true });
+                } catch (e) {
+                    sendResponse({ ok: false, error: e.message });
+                }
+                document.body.removeChild(textarea);
+            });
+            return true;
+        } else {
+            // Fallback to execCommand
+            const textarea = document.createElement('textarea');
+            textarea.value = request.text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                sendResponse({ ok: true });
+            } catch (e) {
+                sendResponse({ ok: false, error: e.message });
+            }
+            document.body.removeChild(textarea);
+        }
     }
 });
 
@@ -485,7 +534,7 @@ document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') nudgePoint(pt, step, 0);
         if (e.key === 'ArrowUp') nudgePoint(pt, 0, -step);
         if (e.key === 'ArrowDown') nudgePoint(pt, 0, step);
-        drawGuides();
+        scheduleDrawGuides();
         e.preventDefault();
     }
     // Undo/Redo
@@ -497,7 +546,7 @@ document.addEventListener('keydown', (e) => {
     // Tab navigation
     if (e.key === 'Tab') {
         cycleHoverElement(e.shiftKey ? -1 : 1);
-        drawGuides();
+        scheduleDrawGuides();
         e.preventDefault();
     }
 });
@@ -551,7 +600,7 @@ function restoreSelectionState(state) {
     freePointB = state.freePointB && { ...state.freePointB };
     multiSelect = [...state.multiSelect];
     freeMode = state.freeMode;
-    drawGuides();
+    scheduleDrawGuides();
 }
 
 // --- Smart Label Placement ---
@@ -807,7 +856,7 @@ function onCanvasClick(e) {
         selectedElementA = null;
         selectedElementB = null;
         multiSelect = [];
-        drawGuides();
+        scheduleDrawGuides();
         return;
     }
     if (multiDistanceEnabled && e.metaKey) {
@@ -819,7 +868,7 @@ function onCanvasClick(e) {
         if (el && !multiSelect.includes(el)) {
             multiSelect.push(el);
         }
-        drawGuides();
+        scheduleDrawGuides();
         return;
     }
     // Normal selection
@@ -847,7 +896,7 @@ function onCanvasClick(e) {
         selectedElementA = getElementAtPoint(e.clientX, e.clientY);
         selectedElementB = null;
     }
-    drawGuides();
+    scheduleDrawGuides();
 }
 
 function onCanvasMouseMove(e) {
@@ -860,7 +909,7 @@ function onCanvasMouseMove(e) {
     } else {
         hoverSnapPoint = null;
     }
-    drawGuides();
+    scheduleDrawGuides();
 }
 
 // --- Persistent Guides ---
@@ -870,12 +919,12 @@ let dragOffset = 0;
 
 function addGuide(x, y, vertical) {
     guides.push({ x, y, vertical });
-    drawGuides();
+    scheduleDrawGuides();
 }
 
 function removeGuide(idx) {
     guides.splice(idx, 1);
-    drawGuides();
+    scheduleDrawGuides();
 }
 
 function onOverlayDblClick(e) {
@@ -922,7 +971,7 @@ function onOverlayMouseMove(e) {
     } else {
         g.y = y - dragOffset;
     }
-    drawGuides();
+    scheduleDrawGuides();
 }
 
 function onOverlayMouseUp(e) {
@@ -1204,4 +1253,16 @@ function addCopyButtonToBadge() {
         };
         badge.appendChild(btn);
     }
+}
+
+// --- Overlay Redraw Throttling ---
+let redrawPending = false;
+function scheduleDrawGuides() {
+  if (!redrawPending) {
+    redrawPending = true;
+    requestAnimationFrame(() => {
+      drawGuides();
+      redrawPending = false;
+    });
+  }
 }

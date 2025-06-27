@@ -5,14 +5,14 @@
 
 body { 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-    width: 440px; 
-    padding: 15px; 
+    width: 360px; 
+    padding: 0; 
     background-color: #f9f9f9; 
     margin: 0;
 }
 
 h3 { 
-    margin: 10px 0; 
+    margin: 10px 0 6px; 
     color: #333; 
     font-size: 16px;
     border-bottom: 1px solid #e0e0e0;
@@ -32,12 +32,12 @@ h3 {
 }
 
 .action-btn {
-    padding: 8px 12px;
+    padding: 6px 14px;
     border: 1px solid #ccc;
-    border-radius: 5px;
+    border-radius: 6px;
     background-color: #f0f0f0;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     transition: background-color 0.2s;
 }
 
@@ -60,21 +60,18 @@ h3 {
 }
 
 .settings-container {
-    display: grid;
-    gap: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
     padding: 15px;
     background-color: white;
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border-radius: 12px;
     margin-bottom: 15px;
 }
 
-.free-features {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.pro-features {
-    grid-template-columns: repeat(3, 1fr);
+.free-features, .pro-features {
+    gap: 10px;
 }
 
 /* Disabled state for pro features */
@@ -87,16 +84,15 @@ h3 {
 
 .setting-item { 
     display: flex; 
-    flex-direction: column; 
     align-items: center; 
-    gap: 5px;
-    text-align: center;
-    font-size: 12px; 
+    gap: 12px;
+    font-size: 14px; 
     color: #333;
 }
 
 .screenshot-item {
-    grid-column: span 2;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 
@@ -106,11 +102,7 @@ h3 {
     width: 44px; 
     height: 24px; 
 }
-.switch input { 
-    opacity: 0; 
-    width: 0; 
-    height: 0; 
-}
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
 .slider { 
     position: absolute; 
     cursor: pointer; 
@@ -133,18 +125,18 @@ h3 {
     transition: .4s; 
     border-radius: 50%; 
 }
-input:checked + .slider { background-color: #007aff; }
+input:checked + .slider { background-color: #00bfae; }
 input:checked + .pro-slider { background-color: #9c27b0; }
 input:checked + .slider:before { transform: translateX(20px); }
 
 
 select {
-    font-size: 11px;
+    font-size: 13px;
     border-radius: 3px;
     border: 1px solid #ccc;
     background: white;
     padding: 5px;
-    width: 100%;
+    width: 80px;
     cursor: pointer;
     outline: none;
 }
@@ -166,8 +158,8 @@ select {
 }
 
 input[type="range"] { 
-    width: 100%;
-    margin-top: 8px;
+    width: 100px;
+    margin-left: 8px;
 }
 
 /* License Management Section */
@@ -175,11 +167,16 @@ input[type="range"] {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    padding: 15px;
 }
 
 #license-status-display {
-    text-align: center;
+    text-align: right;
     font-weight: bold;
+    margin-bottom: 4px;
 }
 
 .status-active {
@@ -200,11 +197,11 @@ input[type="range"] {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 5px;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .license-message {
-    text-align: center;
+    text-align: left;
     font-size: 12px;
     min-height: 16px;
 }
