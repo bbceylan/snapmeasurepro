@@ -269,8 +269,9 @@ let settings = {
 
 let freeSelectionEnabled = false;
 let multiDistanceEnabled = false;
+let autoCopyEnabled = false;
 
-// Listen for storage changes to freeSelectionEnabled and multiDistanceEnabled
+// Listen for storage changes to freeSelectionEnabled, multiDistanceEnabled, and autoCopyEnabled
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') {
         if (changes.freeSelectionEnabled) {
@@ -279,6 +280,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
         if (changes.multiDistanceEnabled) {
             multiDistanceEnabled = changes.multiDistanceEnabled.newValue;
         }
+        if ('autoCopyEnabled' in changes) autoCopyEnabled = changes.autoCopyEnabled.newValue;
     }
 });
 
@@ -298,13 +300,14 @@ if (typeof window.snapMeasureInitialized === 'undefined') {
                 settings.screenshotOpacity = result.screenshotOpacity || 0.5;
                 freeSelectionEnabled = typeof result.freeSelectionEnabled !== 'undefined' ? result.freeSelectionEnabled : true;
                 multiDistanceEnabled = typeof result.multiDistanceEnabled !== 'undefined' ? result.multiDistanceEnabled : true;
+                autoCopyEnabled = typeof result.autoCopyEnabled !== 'undefined' ? result.autoCopyEnabled : false;
                 drawGrid();
                 drawBaselineGrid();
                 drawScreenshot();
                 if (window.inspector && window.inspector.isActive) {
                     drawGuides();
                 }
-                console.log('SnapMeasure: Settings loaded', settings, {freeSelectionEnabled, multiDistanceEnabled});
+                console.log('SnapMeasure: Settings loaded', settings, {freeSelectionEnabled, multiDistanceEnabled, autoCopyEnabled});
             });
         }
 
@@ -419,6 +422,7 @@ if (typeof window.snapMeasureInitialized === 'undefined') {
                 if (changes.screenshotOpacity) settings.screenshotOpacity = changes.screenshotOpacity.newValue;
                 if (changes.freeSelectionEnabled) freeSelectionEnabled = changes.freeSelectionEnabled.newValue;
                 if (changes.multiDistanceEnabled) multiDistanceEnabled = changes.multiDistanceEnabled.newValue;
+                if ('autoCopyEnabled' in changes) autoCopyEnabled = changes.autoCopyEnabled.newValue;
                 drawGrid();
                 drawBaselineGrid();
                 drawScreenshot();
@@ -593,6 +597,9 @@ onCanvasClick = function(e) {
     console.log('SnapMeasure: onCanvasClick', e.clientX, e.clientY, e.altKey, e.metaKey, {freeSelectionEnabled, multiDistanceEnabled});
     saveSelectionState();
     _onCanvasClick(e);
+    if (lastMeasurement && autoCopyEnabled) {
+        chrome.runtime.sendMessage({ action: 'copyToClipboard', text: lastMeasurement });
+    }
 };
 
 // Save initial state
@@ -1172,3 +1179,29 @@ function injectSnapMeasureStyles() {
 }
 // Call this at inspector activation
 injectSnapMeasureStyles();
+
+function addCopyButtonToBadge() {
+    const badge = overlayRoot && overlayRoot.querySelector('.snapmeasure-badge');
+    if (badge && !badge.querySelector('.copy-btn')) {
+        const btn = document.createElement('button');
+        btn.textContent = 'Copy';
+        btn.className = 'copy-btn';
+        btn.style.marginLeft = '10px';
+        btn.style.fontSize = '12px';
+        btn.style.padding = '2px 8px';
+        btn.style.border = 'none';
+        btn.style.borderRadius = '4px';
+        btn.style.background = '#fff';
+        btn.style.color = '#333';
+        btn.style.cursor = 'pointer';
+        btn.onclick = () => {
+            chrome.runtime.sendMessage({ action: 'copyToClipboard', text: lastMeasurement }, (response) => {
+                if (response && response.success) {
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+                }
+            });
+        };
+        badge.appendChild(btn);
+    }
+}

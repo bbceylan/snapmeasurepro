@@ -56,10 +56,8 @@ const licenseManager = new SnapMeasureLicenseManager();
 
 // ---------- Off-screen clipboard helper ----------
 async function ensureOffscreen() {
-  // Creates off-screen document once per session
   const hasDoc = await chrome.offscreen.hasDocument();
   if (hasDoc) return;
-
   await chrome.offscreen.createDocument({
     url: 'offscreen.html',
     reasons: ['CLIPBOARD'],
@@ -83,13 +81,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             });
         return true;
     } else if (request.action === 'copyToClipboard') {
-        // Forward to off-screen doc
         ensureOffscreen().then(() => {
             chrome.runtime.sendMessage(
                 { action: 'copyToClipboardOffscreen', text: request.text },
                 res => sendResponse(res)
             );
         });
-        return true; // keep the sendResponse channel open
+        return true;
     }
 });

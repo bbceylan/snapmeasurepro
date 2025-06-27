@@ -25,7 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
         licenseKeyInput: $('license-key-input'),
         activateBtn: $('activate-license-btn'),
         deactivateBtn: $('deactivate-license-btn'),
-        licenseMessage: $('license-message')
+        licenseMessage: $('license-message'),
+        autoCopyToggle: $('auto-copy-toggle')
     };
 
     // group for bulk enabling/disabling
@@ -52,7 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function refreshUI() {
         chrome.storage.local.get([
             'isProUser', 'licenseKey', 'showGrid',
-            'freeSelectionEnabled', 'multiDistanceEnabled'
+            'freeSelectionEnabled', 'multiDistanceEnabled',
+            'autoCopyEnabled'
         ], st => {
             const isPro = !!st.isProUser;
             proFeaturesContainer.classList.toggle('disabled', !isPro);
@@ -72,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
             els.freeGridToggle.checked = !!st.showGrid;
             els.freeSelectionToggle.checked = !!st.freeSelectionEnabled;
             els.multiDistanceToggle.checked = !!st.multiDistanceEnabled;
+            els.autoCopyToggle.checked = !!st.autoCopyEnabled;
         });
     }
 
@@ -86,14 +89,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const key = els.licenseKeyInput.value.trim();
         if (!key) return;
         els.activateBtn.disabled = true;
-        sendToActive({ action: 'validateLicense', licenseKey: key }, res => {
-            if (res.ok && res.data?.isValid) {
+        chrome.runtime.sendMessage({ action:'validateLicense', licenseKey:key }, res => {
+            if (res && res.isValid) {
                 els.licenseMessage.textContent = 'Licence activated!';
-                els.licenseMessage.className = 'license-message success';
+                els.licenseMessage.className   = 'license-message success';
             } else {
                 els.licenseMessage.textContent =
-                    res.error || res.data?.error || 'Activation failed.';
-                els.licenseMessage.className = 'license-message error';
+                    (res && res.error) || 'Activation failed.';
+                els.licenseMessage.className   = 'license-message error';
             }
             els.activateBtn.disabled = false;
             refreshUI();
@@ -145,6 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
     els.exportButton?.addEventListener('click', () =>
         sendToActive({ action: 'exportImage' }));
 
+    // auto-copy toggle
+    els.autoCopyToggle?.addEventListener('change', () =>
+        chrome.storage.local.set({ autoCopyEnabled: els.autoCopyToggle.checked }));
+
     // ---------- init ----------
     refreshUI();
     chrome.storage.onChanged.addListener(refreshUI);
@@ -152,4 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ask content script whether inspector is on
     sendToActive({ action: 'getInspectorState' }, res =>
         setToggleLabel(res.data?.isActive));
+
+    // On load, set auto-copy toggle from storage
+    chrome.storage.local.get(['autoCopyEnabled'], st => {
+        if (els.autoCopyToggle) els.autoCopyToggle.checked = !!st.autoCopyEnabled;
+    });
 });
