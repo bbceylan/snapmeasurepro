@@ -225,14 +225,27 @@ function drawGuides() {
     }
     console.log('SnapMeasure: drawGuides called');
     ui.measureCtx.clearRect(0, 0, ui.measureCanvas.width, ui.measureCanvas.height);
-    ctx.strokeStyle = '#ff0050';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(ui.measureCanvas.width/2 - 20, ui.measureCanvas.height/2);
-    ctx.lineTo(ui.measureCanvas.width/2 + 20, ui.measureCanvas.height/2);
-    ctx.moveTo(ui.measureCanvas.width/2, ui.measureCanvas.height/2 - 20);
-    ctx.lineTo(ui.measureCanvas.width/2, ui.measureCanvas.height/2 + 20);
-    ctx.stroke();
+    // Hover highlight
+    if (hoverElement) {
+        drawElementBox(hoverElement, '#bdbdbd');
+        if (hoverSnapPoint) drawSnapIndicator(hoverSnapPoint);
+    }
+    // Selected elements
+    if (selectedElementA) drawElementBox(selectedElementA, '#007bff');
+    if (selectedElementB) drawElementBox(selectedElementB, '#00bfae');
+    // Distance
+    if (selectedElementA && selectedElementB) {
+        drawDistanceBetweenRects(selectedElementA.getBoundingClientRect(), selectedElementB.getBoundingClientRect());
+    }
+    // Free point-to-point
+    if (freePointA && freePointB) {
+        drawFreePointLine();
+    }
+    // Multi-select
+    if (multiSelect.length > 1) {
+        drawBoundingBox(multiSelect);
+        drawDistancesForMulti(multiSelect);
+    }
 }
 
 function drawLockedMeasurements() {
@@ -843,97 +856,6 @@ function onCanvasMouseMove(e) {
     drawGuides();
 }
 
-function drawGuides() {
-    if (!ui.measureCtx) {
-        console.error('SnapMeasure: ui.measureCtx is undefined in drawGuides');
-        return;
-    }
-    console.log('SnapMeasure: drawGuides called');
-    ui.measureCtx.clearRect(0, 0, ui.measureCanvas.width, ui.measureCanvas.height);
-    // Hover highlight
-    if (hoverElement) {
-        drawElementBox(hoverElement, '#bdbdbd');
-        if (hoverSnapPoint) drawSnapIndicator(hoverSnapPoint);
-    }
-    // Selected elements
-    if (selectedElementA) drawElementBox(selectedElementA, '#007bff');
-    if (selectedElementB) drawElementBox(selectedElementB, '#00bfae');
-    // Distance
-    if (selectedElementA && selectedElementB) {
-        drawDistanceBetweenRects(selectedElementA.getBoundingClientRect(), selectedElementB.getBoundingClientRect());
-    }
-    // Free point-to-point
-    if (freePointA && freePointB) {
-        drawFreePointLine();
-    }
-    // Multi-select
-    if (multiSelect.length > 1) {
-        drawBoundingBox(multiSelect);
-        drawDistancesForMulti(multiSelect);
-    }
-}
-
-// Copy-to-clipboard button in badge
-function addCopyButtonToBadge() {
-    const badge = overlayRoot && overlayRoot.querySelector('.snapmeasure-badge');
-    if (badge && !badge.querySelector('.copy-btn')) {
-        const btn = document.createElement('button');
-        btn.textContent = 'Copy';
-        btn.className = 'copy-btn';
-        btn.style.marginLeft = '10px';
-        btn.style.fontSize = '12px';
-        btn.style.padding = '2px 8px';
-        btn.style.border = 'none';
-        btn.style.borderRadius = '4px';
-        btn.style.background = '#fff';
-        btn.style.color = '#333';
-        btn.style.cursor = 'pointer';
-        btn.onclick = () => {
-            chrome.runtime.sendMessage({ action: 'copyToClipboard', text: lastMeasurement }, (response) => {
-                if (response && response.success) {
-                    btn.textContent = 'Copied!';
-                    setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
-                } else {
-                    // Show error feedback
-                }
-            });
-        };
-        badge.appendChild(btn);
-    }
-}
-
-// Attach/detach event listeners when inspector is activated/deactivated
-const originalActivate = window.inspector.activate;
-window.inspector.activate = function() {
-    originalActivate.apply(this, arguments);
-    if (ui.measureCanvas) {
-        ui.measureCanvas.addEventListener('click', onCanvasClick);
-        ui.measureCanvas.addEventListener('mousemove', onCanvasMouseMove);
-        ui.measureCanvas.style.cursor = 'crosshair';
-    }
-    updateBadgeTooltip();
-    addCopyButtonToBadge();
-};
-const originalDeactivate = window.inspector.deactivate;
-window.inspector.deactivate = function() {
-    originalDeactivate.apply(this, arguments);
-    if (ui.measureCanvas) {
-        ui.measureCanvas.removeEventListener('click', onCanvasClick);
-        ui.measureCanvas.removeEventListener('mousemove', onCanvasMouseMove);
-        ui.measureCanvas.style.cursor = 'default';
-    }
-    hoverElement = null;
-    hoverSnapPoint = null;
-    selectedElementA = null;
-    selectedElementB = null;
-    freePointA = null;
-    freePointB = null;
-    freeMode = false;
-    multiSelect = [];
-    lastMeasurement = '';
-    drawGuides();
-};
-
 // --- Persistent Guides ---
 let guides = [];
 let draggingGuide = null;
@@ -1112,61 +1034,6 @@ function addExportButtonToBadge() {
     }
 }
 
-// Patch drawGuides to draw guides and update measurement history
-const _drawGuides = drawGuides;
-drawGuides = function() {
-    _drawGuides.apply(this, arguments);
-    // Draw persistent guides
-    const ctx = ui.measureCtx;
-    ctx.save();
-    ctx.strokeStyle = '#ffeb3b';
-    ctx.lineWidth = 2;
-    guides.forEach(g => {
-        if (g.vertical) {
-            ctx.beginPath();
-            ctx.moveTo(g.x, 0);
-            ctx.lineTo(g.x, window.innerHeight);
-            ctx.stroke();
-        } else {
-            ctx.beginPath();
-            ctx.moveTo(0, g.y);
-            ctx.lineTo(window.innerWidth, g.y);
-            ctx.stroke();
-        }
-    });
-    ctx.restore();
-};
-
-// Add measurement to history on every click
-const _onCanvasClick2 = onCanvasClick;
-onCanvasClick = function(e) {
-    _onCanvasClick2(e);
-    if (lastMeasurement) addMeasurementHistory(lastMeasurement);
-};
-
-// Attach/detach overlay event listeners
-const _activate = window.inspector.activate;
-window.inspector.activate = function() {
-    _activate.apply(this, arguments);
-    overlayRoot.addEventListener('dblclick', onOverlayDblClick);
-    overlayRoot.addEventListener('mousedown', onOverlayMouseDown);
-    overlayRoot.addEventListener('mousemove', onOverlayMouseMove);
-    overlayRoot.addEventListener('mouseup', onOverlayMouseUp);
-    overlayRoot.addEventListener('dblclick', onOverlayGuideDblClick);
-    addExportButtonToBadge();
-};
-const _deactivate = window.inspector.deactivate;
-window.inspector.deactivate = function() {
-    _deactivate.apply(this, arguments);
-    overlayRoot.removeEventListener('dblclick', onOverlayDblClick);
-    overlayRoot.removeEventListener('mousedown', onOverlayMouseDown);
-    overlayRoot.removeEventListener('mousemove', onOverlayMouseMove);
-    overlayRoot.removeEventListener('mouseup', onOverlayMouseUp);
-    overlayRoot.removeEventListener('dblclick', onOverlayGuideDblClick);
-    let panel = document.getElementById('snapmeasure-history-panel');
-    if (panel) panel.remove();
-};
-
 // --- Inject CSS Variables and Styles ---
 function injectSnapMeasureStyles() {
     if (document.getElementById('snapmeasure-style')) return;
@@ -1303,6 +1170,5 @@ function injectSnapMeasureStyles() {
     `;
     document.head.appendChild(style);
 }
-
 // Call this at inspector activation
 injectSnapMeasureStyles();
