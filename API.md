@@ -92,5 +92,4 @@ Status: 405 Method Not Allowed
 ```
 curl -X POST https://snapmeasureapi.netlify.app/.netlify/functions/validate-license \
   -H 'Content-Type: application/json' \
-  -d '{"license": "SNAP-TEST1-123456"}'
-``` 
+  -d '{"license": "SNAP-TEST1-123456"}'```

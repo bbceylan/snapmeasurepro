@@ -8,5 +8,4 @@ chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
                 sendResponse({ ok: false, error: err.message });
             });
         return true;        // async
-    }
-});
+    }});

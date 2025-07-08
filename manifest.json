@@ -48,5 +48,4 @@
       "resources": ["offscreen.html"],
       "matches": ["<all_urls>"]
     }
-  ]
-}
+  ]}
