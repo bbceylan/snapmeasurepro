@@ -147,7 +147,7 @@ function drawBaselineGrid() {
     if (!settings.showBaselineGrid || !settings.isProUser) return;
     ctx.strokeStyle = 'rgba(255,0,0,0.2)';
     ctx.lineWidth = 1;
-    const step = 4; // 4px baseline
+    const step = Number(settings.showBaselineGrid) || 4;
     for (let y = 0; y < ui.baselineCanvas.height; y += step) {
         ctx.beginPath();
         ctx.moveTo(0, y);
@@ -468,6 +468,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
     } else if (request.action === 'getInspectorState') {
         sendResponse({ isActive: window.inspector && window.inspector.isActive });
+    } else if (request.action === 'exportImage') {
+        exportOverlayAsImage();
+        sendResponse({ ok: true });
     } else if (request.action === 'fallbackCopyToClipboard') {
         // Try Clipboard API first
         if (navigator.clipboard && navigator.clipboard.writeText) {
