@@ -14,7 +14,8 @@ SnapMeasure Pro is a Chrome extension for measuring and inspecting UI elements, 
 ### Pro Features
 - **Baseline Grid**: Show a baseline grid for typography alignment.
 - **Guides**: Add persistent vertical/horizontal guides (double-click overlay to add, drag to move, double-click guide to remove).
-- **Screenshot Overlay**: Upload a screenshot for pixel-perfect comparison.
+- **Screenshot Overlay**: Upload a screenshot or capture the current view for pixel-perfect comparison.
+- **Screenshot Capture**: Grab a screenshot of the active tab directly from the popup.
 - **Spec Export**: Export overlay as an image for documentation.
 
 ## How It Works

@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - Planned: Integration with Gumroad API for dynamic license validation
 - Planned: More Pro features (custom color overlays, measurement history)
+- Added screenshot capture functionality in the popup
 
 ## [2.0.0] - 2025-06-27
 ### Added

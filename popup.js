@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         guidesToggle: $('guides-toggle'),
         screenshotUploadBtn: $('screenshot-upload-btn'),
         screenshotUpload: $('screenshot-upload'),
+        screenshotCaptureBtn: $('screenshot-capture-btn'),
         screenshotDeleteBtn: $('screenshot-delete-btn'),
         screenshotOpacity: $('screenshot-opacity'),
         exportButton: $('export-button'),
@@ -32,8 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // group for bulk enabling/disabling
     const proControls = [
         els.gridToggle, els.baselineSelect, els.guidesToggle,
-        els.screenshotUploadBtn, els.screenshotDeleteBtn,
-        els.screenshotOpacity, els.exportButton
+        els.screenshotUploadBtn, els.screenshotCaptureBtn,
+        els.screenshotDeleteBtn, els.screenshotOpacity,
+        els.exportButton
     ];
 
     // Add inspector status indicator
@@ -170,6 +172,8 @@ document.addEventListener('DOMContentLoaded', () => {
             chrome.storage.local.set({ screenshotData: ev.target.result });
         reader.readAsDataURL(file);
     });
+    els.screenshotCaptureBtn?.addEventListener('click', () =>
+        chrome.runtime.sendMessage({ action: 'captureScreenshot' }));
     els.screenshotDeleteBtn?.addEventListener('click', () =>
         chrome.storage.local.set({ screenshotData: null }));
     els.screenshotOpacity?.addEventListener('input', () =>

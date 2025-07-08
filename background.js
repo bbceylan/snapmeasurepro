@@ -88,4 +88,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             );
         });
         return true;
+    } else if (request.action === 'captureScreenshot') {
+        chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+            if (chrome.runtime.lastError || !dataUrl) {
+                sendResponse({ ok: false, error: chrome.runtime.lastError?.message || 'Capture failed' });
+                return;
+            }
+            fetch(dataUrl)
+                .then(res => res.blob())
+                .then(blob => createImageBitmap(blob))
+                .then(bitmap => {
+                    chrome.storage.local.set({
+                        screenshotData: dataUrl,
+                        screenshotImageSize: { width: bitmap.width, height: bitmap.height }
+                    }).then(() => sendResponse({ ok: true }));
+                });
+        });
+        return true;
     }});
