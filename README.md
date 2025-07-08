@@ -40,5 +40,4 @@ SnapMeasure Pro is a Chrome extension for measuring and inspecting UI elements, 
 - **Extensive logging**: Logs are available in the console for debugging overlay creation, settings, and feature toggling.
 
 ## License
-
-SnapMeasure Pro is licensed under the MIT License. See [LICENSE](LICENSE) for details. 
+SnapMeasure Pro is licensed under the MIT License. See [LICENSE](LICENSE) for details.

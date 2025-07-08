@@ -41,7 +41,7 @@ class SnapMeasureLicenseManager {
             return { isValid: false, error: 'Network error during validation.' };
         }
     }
-    
+
     async deactivateLicense() {
         await chrome.storage.local.set({
             isProUser: false,
@@ -88,5 +88,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             );
         });
         return true;
-    }
-});
+    }});

@@ -57,5 +57,4 @@
 
 ## 6. Additional Notes
 
-- The test license key is for development only. For production, integrate with Gumroad or your license provider.
-- For advanced debugging, use Chrome's extension logs and Netlify function logs. 
+- The test license key is for development only. For production, integrate with Gumroad or your license provider.- For advanced debugging, use Chrome's extension logs and Netlify function logs.

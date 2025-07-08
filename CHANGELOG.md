@@ -13,5 +13,4 @@ All notable changes to this project will be documented in this file.
 - Pro feature gating via license key
 - Netlify Functions backend for license validation
 - Test license key support
-- UI for license activation and management
-- Troubleshooting and deployment documentation 
+- UI for license activation and management- Troubleshooting and deployment documentation
